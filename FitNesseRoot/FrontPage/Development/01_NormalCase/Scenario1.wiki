@@ -1,0 +1,81 @@
+---
+Test
+---
+!***> System Settings
+
+!define TEST_SYSTEM {slim}
+!path ${java.class.path}
+| Import |
+| com.example.fitnesse.fixtures |
+
+*!
+
+[[Remote Debug][?test&debug]]
+
+!*** シナリオ実行前準備
+
+!2 Stub作成
+
+!| device stub creator |
+| end point | id | topic name| stub? |
+| a33hoix1t55rlh.iot.us-east-1.amazonaws.com | stub1 | device_stub1| $device_stub= |
+
+*!
+!2 1. MobileからServerへリクエスト送信
+
+対象のURL(HOST + PATH)に対してHttpリクエスト(POST)を送る。
+Contentも今後は指定可能にする。
+レスポンスのStatus Codeが200であることを確認する。
+
+!| ddt: https requester |
+| METHOD | HOST | PATH  | Status? | Response? |
+| POST | http://localhost:8080 | /myapp/myresource/request | 200 | $response= | 
+
+!3 説明
+?がつかない列はRequestの設定値。
+?がつく列には期待値を設定すると、実際のResponseとWiki Pageの期待値を自動的に比較してくれる。
+Responseの内容の検証対象が増えるほど列が増えるため、可読性が落ちないよう注意が必要。
+
+!2 2. ServerからIoT経由でDeviceへ送信
+
+| device stub subscriber | $device_stub |
+| message? |
+| $device_message= |
+
+!3 説明
+DeviceのStubに送られてくるMQTTメッセージを監視する。
+?がつく列に期待値を入れることで検証も可能。
+送られてきたMQTTメッセージをWiki上の変数($device_message)に格納することで次以降のStepのInputとして使える。
+格納方法は簡単で$を先頭につけ、=を最後につけるだけ。変数名は各自で自由につけられる。
+
+!2 3. DeviceからServerへリクエスト送信
+
+!| ddt: https requester |
+| METHOD | HOST | PATH | BODY| Status? | Response? |
+| GET | http://localhost:8080 | /myapp/myresource/command | $device_message | 200 | $response=| 
+
+!3 説明
+Deviceに送られてきたメッセージを元にServerへ送るリクエストを作成し、送る。
+返ってきたレスポンスは、次Step以降用にWiki上の変数（$response)に格納する。
+もちろんこの時点でレスポンスの内容も検証可能。
+
+
+!2 4. Deviceの内部処理実施
+
+!3 何もしない（Stubなので）
+
+!2 5. Serverから外部サーバーへリクエストし、Mobileへ通知
+
+!3 何もしない（外部サーバーのリクエスト方法が未定のため）
+
+!2 6. MobileからServerへリクエスト送信
+
+!| ddt: https requester |
+| METHOD | HOST | PATH | BODY | Status? | Response? |
+| POST | http://localhost:8080 | /myapp/myresource/result | $response| 200 | {"result":"Fine"} | 
+
+!*** シナリオ実行後準備
+
+!2 Stub削除
+
+*!
